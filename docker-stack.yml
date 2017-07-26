@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-  wpcluster:
+  wpdbcluster:
     image: gregnuj/mariadb-galera-swarm
     deploy:
       replicas: 1
@@ -16,7 +16,7 @@ services:
       MYSQL_USER: wordpress
       MYSQL_PASSWORD: ChangeME
       CLUSTER_MINIMUM: 3
-      CLUSTER_NAME: wpcluster
+      CLUSTER_NAME: wpdbcluster
 #      - ./mariadb-init:/docker-entrypoint-initdb.d # Place init .sql file(s) here.
 
   wordpress:
