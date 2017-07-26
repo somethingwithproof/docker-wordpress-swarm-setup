@@ -3,6 +3,8 @@ version: "3"
 services:
   wpdbcluster:
     image: gregnuj/mariadb-galera-swarm
+    networks:
+      - backend
     deploy:
       replicas: 1
       update_config:
@@ -21,6 +23,9 @@ services:
 
   wordpress:
     image: wordpress:php7.1-fpm-alpine
+    networks:
+      - backend
+      - frontend
     ports:
       - 8080:80
     depends_on:
@@ -51,6 +56,9 @@ services:
 
   nginx:
     image: nginx/1.13.3-alpine
+    networks:
+      - frontend
+      - backend
     environment:
       NGINX_STATIC_CONTENT_OPEN_FILE_CACHE: "off"
       NGINX_ERROR_LOG_LEVEL: debug
@@ -65,6 +73,8 @@ services:
 
   varnish:
     image: cloudposse/varnish
+    networks:
+      - backend
     depends_on:
       - nginx
     environment:
@@ -78,9 +88,14 @@ services:
 
   redis:
     image: redis:alpine
+    networks:
+      - backend
 
   pma:
     image: phpmyadmin/phpmyadmin
+    networks:
+      - backend
+      - frontend
     environment:
       PMA_HOST: mariadb
       PMA_USER: wordpress
@@ -94,6 +109,8 @@ services:
 
   athenapdf:
     image: arachnysdocker/athenapdf-service
+    networks:
+      - backend
     environment:
       WEAVER_AUTH_KEY: weaver-auth-key
       WEAVER_ATHENA_CMD: "athenapdf -S"
@@ -104,6 +121,8 @@ services:
 
   mailhog:
     image: mailhog/mailhog
+    networks:
+      - backend
     labels:
       - 'traefik.backend=mailhog'
       - 'traefik.port=8025'
@@ -111,6 +130,8 @@ services:
 
   portainer:
     image: portainer/portainer
+    networks:
+      - backend
     command: --no-auth
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -121,9 +142,15 @@ services:
 
   traefik:
     image: traefik
+    networks:
+      - frontend
     command: -c /dev/null --web --docker --logLevel=INFO
     ports:
       - '8000:80'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /traefik.toml:/etc/traefik/traefik.toml:ro
+networks:
+  frontend:
+  backend:
+  secure:
