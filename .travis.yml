@@ -28,9 +28,9 @@ script:
 
   # Dump logs of first container and scale to 10
   - docker ps
-  - export CONTAINER1_ID=`docker ps -f "name=traefik" --format "{{.ID}}" | head -1`
+  - export CONTAINER1_ID=`docker ps -f "name=wordpress_wordpress" --format "{{.ID}}" | head -1`
   - docker logs --tail 100 $CONTAINER1_ID
-  - docker service scale wordpress=10
+  - docker service scale wordpress_wordpress=10
 
   # Let cluster form w/ 10 nodes and verify there are 10 instance members
   - sleep 30
@@ -43,7 +43,7 @@ script:
   - if [[ "$MEMBER_TOTAL" == *'total nodes [10]' ]]; then echo "OK"; else exit 1; fi
 
   # Scale cluster down to 2 nodes, wait 2 minutes then verify only 3 nodes
-  - docker service scale wordpress=2
+  - docker service scale wordpress_wordpress=2
   - sleep 30
   - docker ps
   - export CONTAINERX_ID=`docker ps -f "name=wordpress_wordpress" --format "{{.ID}}"`
