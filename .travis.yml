@@ -28,25 +28,25 @@ script:
 
   # Dump logs of first container and scale to 10
   - docker ps
-  - export CONTAINER1_ID=`docker ps -f "wordpress" --format "{{.ID}}"`
+  - export CONTAINER1_ID=`docker ps -f "name=traefik" --format "{{.ID}}" | head -1`
   - docker logs --tail 100 $CONTAINER1_ID
-  - docker service scale docker-wordpress=10
+  - docker service scale wordpress=10
 
-  # Let cluster form w/ 10 nodes and verify there are 10 hz members
+  # Let cluster form w/ 10 nodes and verify there are 10 instance members
   - sleep 30
   - docker ps
   - docker logs $CONTAINER1_ID
-  - export CONTAINER10_ID=`docker ps -f "name=docker-wordpress.10" --format "{{.ID}}"`
+  - export CONTAINER10_ID=`docker ps -f "name=wordpress" --format "{{.ID}}"`
   - docker logs --tail 100 $CONTAINER10_ID
   - export MEMBER_TOTAL=`docker logs --tail 50 $CONTAINER1_ID 2>&1 | grep "total nodes \[10\]"`
   - echo $MEMBER_TOTAL
   - if [[ "$MEMBER_TOTAL" == *'total nodes [10]' ]]; then echo "OK"; else exit 1; fi
 
   # Scale cluster down to 2 nodes, wait 2 minutes then verify only 3 nodes
-  - docker service scale wordpress_dbcluster=3
+  - docker service scale wordpress=2
   - sleep 30
   - docker ps
-  - export CONTAINERX_ID=`docker ps -f "name=wordpress_dbcluster." --format "{{.ID}}"`
+  - export CONTAINERX_ID=`docker ps -f "name=wordpress.10" --format "{{.ID}}"`
   - CONTAINERX_ID=`echo $CONTAINERX_ID | awk '{ print $1 }'`
   - docker logs --tail 50 $CONTAINERX_ID
   - export MEMBER_TOTAL=`docker logs --tail 50 $CONTAINERX_ID 2>&1 | grep "total nodes \[3\]"`
@@ -54,4 +54,4 @@ script:
   - if [[ "$MEMBER_TOTAL" == *'total nodes [3]' ]]; then echo "OK"; else exit 1; fi
 
   # Remove the service
-  - docker service rm wpcluster wordpress
+  - docker service rm wpdbcluster wordpress
