@@ -36,7 +36,7 @@ script:
   - sleep 30
   - docker ps
   - docker logs $CONTAINER1_ID
-  - export CONTAINER10_ID=`docker ps -f "name=wordpress_wordpress.1" --format "{{.ID}}"`
+  - export CONTAINER10_ID=`docker ps -f "name=wordpress_wordpress.10" --format "{{.ID}}"`
   - docker logs --tail 100 $CONTAINER10_ID
   - export MEMBER_TOTAL=`docker logs --tail 50 $CONTAINER1_ID 2>&1 | grep "total nodes \[10\]"`
   - echo $MEMBER_TOTAL
