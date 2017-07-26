@@ -5,10 +5,12 @@ TODO: Put more badges here.
 
 > Running Wordpress in docker swarm-mode using DNS name-based discovery
 
-This project will create four services in a Docker swarm cluster:
+This project (not production ready) will create five services in a Docker swarm cluster:
 * A wordpress instance with labels for Traefik to load-balance
 * One MariaDB database configured for Galera-based clustering using swarm mode DNS for discovery
 * One Traefik proxying/load balancing container 
+* One redis instance for cacheing
+* One instance of Nginx
 
 ## Table of Contents
 
