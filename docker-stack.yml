@@ -6,18 +6,14 @@ services:
       - 8000:80
       - 444:443
       - 8080:8080
-    command: -c /dev/null --web --docker --logLevel=INFO
-    volumes:
-      - ./traefik.toml:/etc/traefik/traefik.toml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-  # Before running something like this stack in production, make sure you store both your Traefik toml config 
-  # file and acme.json in a durable volume that's mounted in the container:
-  #        - /srv/traefik/config:/etc/traefik
     command: traefik --web -l DEBUG --docker --docker.swarmmode --docker.watch -c /etc/traefik/traefik.toml
     deploy:
       placement:
         constraints:
           - node.role == manager
+    volumes:
+      - /traefik.toml:/etc/traefik/traefik.toml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
   wordpress:
     image: wordpress:php7.1-fpm-alpine
     ports:
