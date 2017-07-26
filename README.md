@@ -43,7 +43,7 @@ docker stack deploy --compose-file docker-stack.yml wordpress
 
 To see an example of scaling up Galera to 3 nodes, execute:
 ```
-docker service scale wordpress_dbcluster=3
+docker service scale wordpress=10
 ```
 When finished, the following command shuts everything down:
 ```
