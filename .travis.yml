@@ -9,13 +9,11 @@ addons:
     packages:
       - net-tools
 
-services:
-  - docker
-
 script:
 
-  # Init swarm and network
+  # Init swarm and network, we need 1.13
   - set -e
+  - curl -fsSL https://get.docker.com/ | sh
   - docker swarm init --advertise-addr 127.0.0.1
   - docker node ls
   - docker stack deploy --compose-file docker-stack.yml wordpress
