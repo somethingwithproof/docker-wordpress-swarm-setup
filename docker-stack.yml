@@ -1,13 +1,12 @@
-version: "3"
+version: '3'
 services:
-
   traefik:
     image: traefik
-    command: -c /dev/null --web --docker --logLevel=INFO
     ports:
       - 8000:80
       - 444:443
       - 8080:8080
+    command: -c /dev/null --web --docker --logLevel=INFO
     volumes:
       - ./traefik.toml:/etc/traefik/traefik.toml:ro
       - /var/run/docker.sock:/var/run/docker.sock
