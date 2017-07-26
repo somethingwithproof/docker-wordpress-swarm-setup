@@ -28,8 +28,6 @@ script:
 
   # Dump logs of first container and scale to 10
   - docker ps
-  - export CONTAINER1_ID=`docker ps -f "name=wordpress_wordpress" --format "{{.ID}}" | head -1`
-  - docker logs --tail 100 $CONTAINER1_ID
   - export CONTAINER_COUNT=`docker ps -q $1 | wc -l`
   - docker service scale wordpress_wordpress=10
 
