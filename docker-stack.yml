@@ -77,7 +77,7 @@ services:
       - 'traefik.frontend.rule=Host:varnish.wp.docker.localhost'
 
   redis:
-    image: wodby/redis:3.2-2.1.1
+    image: redis:alpine
 
   pma:
     image: phpmyadmin/phpmyadmin
