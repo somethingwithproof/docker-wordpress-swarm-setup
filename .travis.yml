@@ -36,7 +36,7 @@ script:
   # Let cluster form w/ 10 nodes and verify there are 10 instance members
   - sleep 30
   - docker ps
-  - export CONTAINER_COUNT=`docker ps -q $1 | wc -l`
+  - export CONTAINER_COUNT=`docker ps -q $1 | grep wordpress_wordpress | wc -l`
   - echo $CONTAINER_COUNT
   - if [[ "$CONTAINER_COUNT" == 10 ]]; then echo "OK"; else exit 1; fi
 
@@ -44,7 +44,7 @@ script:
   - docker service scale wordpress_wordpress=2
   - sleep 30
   - docker ps
-  - export CONTAINER_COUNT=`docker ps -q $1 | wc -l`
+  - export CONTAINER_COUNT=`docker ps -q $1 | grep wordpress_wordpress | wc -l`
   - echo $CONTAINER_COUNT
   - if [[ "$CONTAINER_COUNT" == 2 ]]; then echo "OK"; else exit 1; fi
 
