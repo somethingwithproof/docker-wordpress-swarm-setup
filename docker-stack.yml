@@ -1,24 +1,22 @@
 version: "3"
 services:
 traefik:
-  image: traefik:v1.2.0-rc2-alpine
+  image: traefik
   command: -c /dev/null --web --docker --logLevel=INFO
-  networks:
-    - traefik
   ports:
-    - '8000:80'
-    - '444:443'
-    - '8080:8080' # Dashboard
+    - 8000:80
+    - 444:443
+    - 8080:8080
   volumes:
-    - /srv/traefik/traefik.toml:/etc/traefik/traefik.toml:ro
+    - ./traefik.toml:/etc/traefik/traefik.toml:ro
     - /var/run/docker.sock:/var/run/docker.sock
 # Before running something like this stack in production, make sure you store both your Traefik toml config 
 # file and acme.json in a durable volume that's mounted in the container:
 #        - /srv/traefik/config:/etc/traefik
   command: traefik --web -l DEBUG --docker --docker.swarmmode --docker.watch -c /etc/traefik/traefik.toml
-   deploy:
-     placement:
-       constraints:
+  deploy:
+    placement:
+      constraints:
         - node.role == manager
   wordpress:
     image: wordpress:php7.1-fpm-alpine
@@ -64,7 +62,7 @@ traefik:
       MYSQL_DATABASE: wordpress 
       MYSQL_USER: wordpress 
       MYSQL_PASSWORD: ChangeME 
-      CLUSTER_MINIMUM: 1
+      CLUSTER_MINIMUM: 3
       CLUSTER_NAME: wpdbcluster
     networks:
       - wordpress-network
