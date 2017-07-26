@@ -34,7 +34,7 @@ script:
   # Let cluster form w/ 10 nodes and verify there are 10 instance members
   - sleep 30
   - docker ps
-  - export CONTAINER_COUNT=`docker ps -q $1 name=wordpress_wordpress | wc -l`
+  - export CONTAINER_COUNT=`docker ps -f name=wordpress_wordpress | wc -l`
   - echo $CONTAINER_COUNT
   - if [[ "$CONTAINER_COUNT" == 10 ]]; then echo "OK"; else exit 1; fi
 
