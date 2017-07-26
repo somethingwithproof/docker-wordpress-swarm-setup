@@ -23,10 +23,8 @@ services:
     image: wordpress:php7.1-fpm-alpine
     ports:
       - 8080:80
-    networks:
-      - common
     depends_on:
-      - dbcluster
+      - wpdbcluster
     deploy:
       replicas: 2
       update_config:
