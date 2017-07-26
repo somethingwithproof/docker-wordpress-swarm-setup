@@ -1,0 +1,46 @@
+version: "3"
+services:
+  wordpress:
+    image: wordpress:php7.1-fpm-alpine
+    ports:
+      - 8080:80
+    networks:
+      - common
+    depends_on:
+      - dbcluster
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    environment:
+      WORDPRESS_DB_HOST: "wpcluster"
+      WORDPRESS_DB_NAME: "wordpress"
+      WORDPRESS_DB_USER: "wordpress"
+      WORDPRESS_DB_PASSWORD: "ChangeME"
+      WORDPRESS_AUTH_KEY: "ChangeME"
+      WORDPRESS_LOGGED_IN_KEY: "ChangeME"
+      WORDPRESS_AUTH_SALT: "ChangeME"
+      WORDPRESS_LOGGED_IN_SALT: "ChangeME"
+  wpcluster:
+    image: gregnuj/mariadb-galera-swarm
+    networks:
+      - common
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    environment:
+      MYSQL_ROOT_PASSWORD: ChangeME 
+      MYSQL_DATABASE: wordpress 
+      MYSQL_USER: wordpress 
+      MYSQL_PASSWORD: ChangeME 
+      CLUSTER_MINIMUM: 3
+      CLUSTER_NAME: wpcluster
+networks:
+  common:
