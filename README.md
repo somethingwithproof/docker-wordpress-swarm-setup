@@ -11,6 +11,11 @@ This project (not production ready) will create five services in a Docker swarm 
 * One redis instance for cacheing
 * One instance of Nginx
 
+#TODO:
+* Move service discovery to etcd
+* Create a internal, secure, and external network
+* Configure wordpress via wp-cli
+
 ## Table of Contents
 
 - [Security](#security)
