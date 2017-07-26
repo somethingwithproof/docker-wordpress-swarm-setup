@@ -36,7 +36,7 @@ script:
   - sleep 30
   - docker ps
   - docker logs $CONTAINER1_ID
-  - export CONTAINER10_ID=`docker ps -f "name=wordpress_wordpress" --format "{{.ID}}"`
+  - export CONTAINER10_ID=`docker ps -f "name=wordpress_wordpress.1" --format "{{.ID}}"`
   - docker logs --tail 100 $CONTAINER10_ID
   - export MEMBER_TOTAL=`docker logs --tail 50 $CONTAINER1_ID 2>&1 | grep "total nodes \[10\]"`
   - echo $MEMBER_TOTAL
@@ -46,12 +46,12 @@ script:
   - docker service scale wordpress_wordpress=2
   - sleep 30
   - docker ps
-  - export CONTAINERX_ID=`docker ps -f "name=wordpress_wordpress" --format "{{.ID}}"`
+  - export CONTAINERX_ID=`docker ps -f "name=wordpress_wordpress." --format "{{.ID}}"`
   - CONTAINERX_ID=`echo $CONTAINERX_ID | awk '{ print $1 }'`
   - docker logs --tail 50 $CONTAINERX_ID
   - export MEMBER_TOTAL=`docker logs --tail 50 $CONTAINERX_ID 2>&1 | grep "total nodes \[3\]"`
   - echo $MEMBER_TOTAL
-  - if [[ "$MEMBER_TOTAL" == *'total nodes [3]' ]]; then echo "OK"; else exit 1; fi
+  - if [[ "$MEMBER_TOTAL" == *'total nodes [2]' ]]; then echo "OK"; else exit 1; fi
 
   # Remove the service
   - docker service rm wpdbcluster wordpress
