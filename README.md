@@ -24,10 +24,18 @@ TODO: Fill out this long description.
 ## Install
 
 ```
+docker stack deploy --compose-file docker-stack.yml wordpress
 ```
 
 ## Usage
 
+To see an example of scaling up MariaDB to 3 nodes (generally for databases you want an odd number of nodes), try:
+```
+docker service scale wordpress_dbcluster=3
+```
+When finished, the following command shuts everything down:
+```
+docker service rm wpcluster wordpress
 ```
 ```
 
