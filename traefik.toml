@@ -1,40 +1,59 @@
-# defaultEntryPoints must be at the top because it should not be in any table below
 defaultEntryPoints = ["http", "https"]
 
 [web]
-# Port for the status page
 address = ":8080"
 
-# Entrypoints, http and https
 [entryPoints]
+  [entryPoints.http]
+  address = ":80"
+  [entryPoints.http.redirect]
+    entryPoint = "https"
 
-# http should be redirected to https
-[entryPoints.http]
-address = ":80"
-#[entryPoints.http.redirect]
-entryPoint = "https"
-
-# https is the default
-[entryPoints.https]
-address = ":443"
-[entryPoints.https.tls]
-
-
-# Enable ACME (Let's Encrypt): automatic SSL
-#[acme]
-##caServer = "https://acme-staging.api.letsencrypt.org/directory"
-#email = "mymail@mail.com"
-#storage = "acme.json" # or "traefik/acme/account" if using KV store
-#entryPoint = "https"
-#acmeLogging = true
-#onDemand = true
-#OnHostRule = true
-#
-#[[acme.domains]]
-#  main = "mydomain.com"
+  [entryPoints.https]
+  address = ":443"
+  [entryPoints.https.tls]
 
 [docker]
 endpoint = "unix:///var/run/docker.sock"
 domain = "localhost"
 watch = true
 exposedbydefault = false
+
+[http.services]
+  [http.services.wordpress-backend.loadBalancer]
+    [[http.services.wordpress-backend.loadBalancer.servers]]
+      url = "http://wordpress-backend:9000"
+
+  [http.services.php-fpm]
+    [http.services.php-fpm.loadBalancer]
+      [[http.services.php-fpm.loadBalancer.servers]]
+        url = "http://php-fpm:9000"
+
+[http.routers]
+  [http.routers.wordpress-frontend]
+  entryPoints = ["https"]
+  service = "wordpress-backend"
+  rule = "Host(`example.com`)"
+  [http.routers.wordpress-frontend.middlewares]
+    - name = "php-fpm"
+
+[http.middlewares]
+  [http.middlewares.php-fpm]
+    service = "php-fpm"
+
+  [http.middlewares.caching]
+    [http.middlewares.caching.headers]
+      browserXSSFilter = true
+      browserNoCache = true
+      browserCustom = "Cache-Control: max-age=86400"
+    [http.middlewares.caching.pathPrefixStrip]
+  [http.middlewares.custom-error-pages]
+    [http.middlewares.custom-error-pages.errors]
+      status = [404, 500, 502, 503, 504]
+      service = "error-page"
+  [http.middlewares.custom-headers]
+    [http.middlewares.custom-headers.headers]
+      Access-Control-Allow-Origin = "*"
+      X-Content-Type-Options = "nosniff"
+      X-XSS-Protection = "1; mode=block"
+      X-Frame-Options = "DENY"
