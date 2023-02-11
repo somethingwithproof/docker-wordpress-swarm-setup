@@ -1,59 +1,69 @@
+# Default entrypoints
 defaultEntryPoints = ["http", "https"]
 
+# Web interface
 [web]
-address = ":8080"
+  address = ":8080"
 
+# Entrypoints
 [entryPoints]
   [entryPoints.http]
-  address = ":80"
-  [entryPoints.http.redirect]
-    entryPoint = "https"
-
+    address = ":80"
+    [entryPoints.http.redirect]
+      entryPoint = "https"
   [entryPoints.https]
-  address = ":443"
-  [entryPoints.https.tls]
+    address = ":443"
+    [entryPoints.https.tls]
 
+# Docker provider configuration
 [docker]
-endpoint = "unix:///var/run/docker.sock"
-domain = "localhost"
-watch = true
-exposedbydefault = false
+  endpoint = "unix:///var/run/docker.sock"
+  domain = "localhost"
+  watch = true
+  exposedbydefault = false
 
-[http.services]
-  [http.services.wordpress-backend.loadBalancer]
-    [[http.services.wordpress-backend.loadBalancer.servers]]
-      url = "http://wordpress-backend:9000"
+# Define routers for each service
+[frontends]
+  [frontends.nginx]
+    backend = "nginx"
+    passHostHeader = true
+    [frontends.nginx.routes.main]
+      rule = "Host: wp.docker.localhost"
+  [frontends.varnish]
+    backend = "varnish"
+    passHostHeader = true
+    [frontends.varnish.routes.main]
+      rule = "Host: varnish.wp.docker.localhost"
+  [frontends.pma]
+    backend = "pma"
+    passHostHeader = true
+    [frontends.pma.routes.main]
+      rule = "Host: pma.wp.docker.localhost"
+  [frontends.mailhog]
+    backend = "mailhog"
+    passHostHeader = true
+    [frontends.mailhog.routes.main]
+      rule = "Host: mailhog.wp.docker.localhost"
+  [frontends.portainer]
+    backend = "portainer"
+    passHostHeader = true
+    [frontends.portainer.routes.main]
+      rule = "Host: portainer.wp.docker.localhost"
 
-  [http.services.php-fpm]
-    [http.services.php-fpm.loadBalancer]
-      [[http.services.php-fpm.loadBalancer.servers]]
-        url = "http://php-fpm:9000"
-
-[http.routers]
-  [http.routers.wordpress-frontend]
-  entryPoints = ["https"]
-  service = "wordpress-backend"
-  rule = "Host(`example.com`)"
-  [http.routers.wordpress-frontend.middlewares]
-    - name = "php-fpm"
-
-[http.middlewares]
-  [http.middlewares.php-fpm]
-    service = "php-fpm"
-
-  [http.middlewares.caching]
-    [http.middlewares.caching.headers]
-      browserXSSFilter = true
-      browserNoCache = true
-      browserCustom = "Cache-Control: max-age=86400"
-    [http.middlewares.caching.pathPrefixStrip]
-  [http.middlewares.custom-error-pages]
-    [http.middlewares.custom-error-pages.errors]
-      status = [404, 500, 502, 503, 504]
-      service = "error-page"
-  [http.middlewares.custom-headers]
-    [http.middlewares.custom-headers.headers]
-      Access-Control-Allow-Origin = "*"
-      X-Content-Type-Options = "nosniff"
-      X-XSS-Protection = "1; mode=block"
-      X-Frame-Options = "DENY"
+# Define backends for each service
+[backends]
+  [backends.nginx]
+    [backends.nginx.servers.server1]
+      url = "http://nginx:80"
+  [backends.varnish]
+    [backends.varnish.servers.server1]
+      url = "http://varnish:6081"
+  [backends.pma]
+    [backends.pma.servers.server1]
+      url = "http://pma:80"
+  [backends.mailhog]
+    [backends.mailhog.servers.server1]
+      url = "http://mailhog:8025"
+  [backends.portainer]
+    [backends.portainer.servers.server1]
+      url = "http://portainer:9000"
