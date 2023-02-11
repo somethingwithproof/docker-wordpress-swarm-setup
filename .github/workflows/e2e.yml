@@ -1,0 +1,37 @@
+name: End-to-End Tests
+
+on: [push]
+
+jobs:
+  e2e_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Docker
+      uses: docker/setup-docker@v1
+
+    - name: Build Docker images
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: wordpress:${{ env.TAG }}
+
+    - name: Start Docker containers
+      uses: docker/start-action@v1
+      with:
+        args: docker stack deploy -c docker-stack.yml wordpress
+
+    - name: Test Wordpress
+      run: curl http://localhost:8080
+
+    - name: Test Traefik
+      run: curl http://localhost:8000
+
+    - name: Stop Docker containers
+      uses: docker/stop-action@v1
+      with:
+        args: docker stack rm wordpress
