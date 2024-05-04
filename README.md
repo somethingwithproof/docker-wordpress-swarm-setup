@@ -49,7 +49,7 @@ To shut down and remove the WordPress stack, run the following command:
 Contributions are welcome! Please see the ~[contribute.md](contribute.md)~ file for more information.
 
 ## Maintainers
-* ~[Your Name](https://github.com/yourusername)~
+* @thomasvincent(https://github.com/thomasvincent)
 
 ##License
-This project is licensed under the Apache 2.0 License. See the ~[LICENSE](LICENSE)~ file for more information.
+This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for more information.
