@@ -37,19 +37,19 @@ A Docker Swarm cluster deployment for running WordPress using DNS name-based dis
 To scale the WordPress service to 10 replicas, run the following command:
 
 `docker service scale wordpress_wordpress=10`
-# Monitoring
+## Monitoring
 Access the Traefik dashboard by visiting http://traefik.example.com. Replace traefik.example.com with your actual domain name.
 
-# Cleanup
+## Cleanup
 To shut down and remove the WordPress stack, run the following command:
 
 `docker stack rm wordpress`
 
-# Contributing
+## Contributing
 Contributions are welcome! Please see the ~[contribute.md](contribute.md)~ file for more information.
 
-# Maintainers
+## Maintainers
 * ~[Your Name](https://github.com/yourusername)~
 
-⠀License
+##License
 This project is licensed under the Apache 2.0 License. See the ~[LICENSE](LICENSE)~ file for more information.
