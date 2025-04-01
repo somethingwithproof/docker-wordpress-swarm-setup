@@ -2,92 +2,96 @@ version: "3.9"
 
 services:
 
-  # MariaDB Galera Cluster
+  # MariaDB Galera Cluster (Bootstrap Node)
   wpdbcluster:
-    image: mariadb:10.11
+    image: mariadb:11.3
     networks:
       - backend
     deploy:
-      mode: global
-      update_config:
-        parallelism: 2
-        delay: 10s
+      replicas: 3
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 15s
     environment:
-      MYSQL_ROOT_PASSWORD: ChangeME
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress
-      MYSQL_PASSWORD: ChangeME
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MARIADB_GALERA_CLUSTER_BOOTSTRAP: "yes"
     volumes:
+      - wpdb-data:/var/lib/mysql
       - ./mariadb-init:/docker-entrypoint-initdb.d
-    command: --wsrep-new-cluster --wsrep-cluster-address=gcomm://
 
-  # WordPress service
+  # WordPress
   wordpress:
-    image: wordpress:6.2
+    image: wordpress:6.5-php8.3-fpm
     networks:
       - backend
       - frontend
     deploy:
       replicas: 2
-      update_config:
-        parallelism: 2
-        delay: 10s
       restart_policy:
         condition: on-failure
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.wordpress.rule=Host(`wordpress.example.com`)
-        - traefik.http.services.wordpress.loadbalancer.server.port=80
+      update_config:
+        parallelism: 1
+        delay: 10s
     environment:
       WORDPRESS_DB_HOST: wpdbcluster
       WORDPRESS_DB_NAME: wordpress
       WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: ChangeME
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_REDIS_HOST', 'redis');
+    volumes:
+      - wp-content:/var/www/html/wp-content
     depends_on:
       - wpdbcluster
+      - redis
 
-  # Traefik load balancer
+  # Redis
+  redis:
+    image: redis:7.2-alpine
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # Traefik Reverse Proxy
   traefik:
-    image: traefik:v2.9
+    image: traefik:3.0
     command:
-      - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
-      - --providers.docker
-      - --providers.docker.swarmMode
-      - --providers.docker.exposedbydefault=false
+      - "--api.dashboard=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesResolvers.letsencrypt.acme.email=you@example.com"
+      - "--certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
+    networks:
+      - frontend
     ports:
       - 80:80
       - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - letsencrypt:/letsencrypt
     deploy:
       placement:
         constraints:
           - node.role == manager
-    networks:
-      - frontend
-
-  # Redis service  
-  redis:
-    image: redis:7.0
-    networks:
-      - backend
-    deploy:
-      replicas: 1
-
-  # Nginx service
-  nginx:
-    image: nginx:1.25
-    networks:
-      - frontend
-      - backend
-    deploy:
-      replicas: 1
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      restart_policy:
+        condition: on-failure
 
 networks:
   frontend:
   backend:
+
+volumes:
+  wpdb-data:
+  wp-content:
+  letsencrypt:
