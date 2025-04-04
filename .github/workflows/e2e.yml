@@ -1,9 +1,10 @@
+# .github/workflows/e2e-tests.yml # Renamed for clarity
 name: End-to-End Tests
 
 on:
   push:
     branches:
-      - main
+      - main # Consider running on PRs too, or only specific triggers
 
 jobs:
   e2e_tests:
@@ -13,35 +14,78 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # --- Setup Phase ---
 
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      # Note: Removed Docker Buildx setup, Login, Build & Push steps
+      # as the target docker-stack.yml uses pre-built public images.
+      # Add them back ONLY if your stack requires custom-built images.
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: your-dockerhub-username/wordpress:${{ github.sha }}
-
-      - name: Start Docker containers
-        run: docker stack deploy -c docker-stack.yml wordpress
-
-      - name: Wait for services to start
+      - name: Create Dummy Secret Files
+        # Needed for potential file mounts or entrypoint scripts, and config validation
         run: |
-          echo "Waiting for services to be healthy..."
-          sleep 30  # Consider using healthchecks instead
+          mkdir -p ./secrets
+          echo "dummy_e2e_root_password" > ./secrets/mysql_root_password.txt
+          echo "dummy_e2e_user_password" > ./secrets/mysql_password.txt
+          # Add other secret files if needed (e.g., redis_password.txt)
+        shell: bash
 
-      - name: Test Wordpress
-        run: curl --fail --retry 5 --retry-delay 5 http://localhost:8080
+      - name: Create Dummy Nginx Config
+        # Needed because the nginx service mounts this file
+        run: |
+          mkdir -p ./nginx # Ensure directory exists if referenced
+          # Basic Nginx config proxying to FPM service named 'wordpress_fpm'
+          echo "server { listen 80; server_name _; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$args; } location ~ \.php$ { try_files \$uri =404; fastcgi_pass wordpress_fpm:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } }" > ./nginx.conf
+        shell: bash
 
-      - name: Test Traefik
-        run: curl --fail --retry 5 --retry-delay 5 http://localhost:8000
+      - name: Initialize Docker Swarm
+        # Required for 'docker stack deploy'
+        run: docker swarm init
 
-      - name: Stop Docker containers
-        run: docker stack rm wordpress
+      - name: Create Dummy Docker Swarm Secrets
+        # Required for 'docker stack deploy' to find secrets defined in the stack file
+        run: |
+          echo "dummy_e2e_root_password" | docker secret create mysql_root_password -
+          echo "dummy_e2e_user_password" | docker secret create mysql_password -
+          # Add 'docker secret create' for other secrets if used
+        shell: bash
+
+      # --- Deployment Phase ---
+
+      - name: Deploy Docker Stack
+        # Deploy the stack defined in docker-stack.yml, name it 'e2e_wp_stack'
+        # Use the actual stack file name here.
+        run: docker stack deploy -c docker-stack.yml e2e_wp_stack
+
+      - name: Wait for WordPress Service to be Ready
+        # Poll the main WordPress endpoint (served by Traefik on port 80)
+        # Increase timeout if needed (e.g., 180s)
+        # Use '--fail' to exit loop on success, '--silent --output /dev/null' to hide output
+        run: |
+          echo "Waiting for WordPress service via Traefik on http://localhost ..."
+          timeout 120s bash -c 'until curl --fail --silent --output /dev/null http://localhost; do echo "Still waiting..."; sleep 5; done'
+          echo "WordPress service appears ready!"
+        shell: bash
+
+      # --- Testing Phase ---
+      # Add more specific E2E tests here using curl, testing frameworks (Cypress, Playwright), etc.
+
+      - name: Run Basic WordPress Reachability Test
+        # Check if the main page loads via Traefik on port 80 and returns HTTP 200 OK
+        # --show-error provides more info on failure, --verbose shows request/response details
+        run: curl --fail --show-error --verbose http://localhost
+
+      # Example: Check if Traefik dashboard is reachable (if exposed on 8080 in your stack)
+      # - name: Run Basic Traefik Dashboard Reachability Test
+      #   run: curl --fail --show-error http://localhost:8080/dashboard/
+
+      # --- Cleanup Phase ---
+
+      - name: Stop Docker Stack
+        # Use if: always() to ensure cleanup happens even if tests fail
+        if: always()
+        run: docker stack rm e2e_wp_stack
+
+      # Optional: Leave Swarm mode if necessary, though runner is ephemeral
+      # - name: Leave Docker Swarm
+      #   if: always()
+      #   run: docker swarm leave --force
