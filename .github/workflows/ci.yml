@@ -1,42 +1,97 @@
+# .github/workflows/ci.yml
 name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
+# Define default environment variables that might be needed for interpolation
+# or service configuration during validation. Adjust as necessary.
 env:
-  DOCKER_REGISTRY: docker.io
-  DOCKER_IMAGE_NAME: myimage
-  DOCKER_IMAGE_TAG: latest
+  YOUR_REAL_EMAIL: ci-validation@example.com # Dummy email for Traefik validation
+  YOUR_DOMAIN: ci-validation.example.com    # Dummy domain for Traefik validation
+  # Add any other ENV vars expected by your docker-stack.yml or services at config/deploy time
 
 jobs:
-  build-and-test:
+  validate-config:
+    name: Validate Docker Compose Configuration
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v4 # Update to latest version
+
+      - name: Create Dummy Secret Files
+        # The stack file references secrets stored in files (e.g., file: ./secrets/...).
+        # We need these files to exist for validation steps, even with dummy content.
+        run: |
+          mkdir -p ./secrets
+          echo "dummy_ci_root_password" > ./secrets/mysql_root_password.txt
+          echo "dummy_ci_user_password" > ./secrets/mysql_password.txt
+          # Add commands here if you add more secrets (e.g., redis_password.txt)
+        shell: bash
+
+      - name: Create Dummy Nginx Config
+        # The nginx service mounts ./nginx.conf. Create a minimal dummy file for validation.
+        run: |
+          mkdir -p ./nginx # Ensure directory exists if referenced
+          echo "server { listen 80; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$args; } location ~ \.php$ { try_files \$uri =404; fastcgi_pass wordpress_fpm:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } }" > ./nginx.conf
+        shell: bash
+
+      - name: Set up Docker Buildx (Optional but good practice)
+        uses: docker/setup-buildx-action@v3 # Update to latest version
+
+      - name: Validate Compose File Syntax & Interpolation
+        # This command performs basic syntax checks, merges multiple compose files (if any),
+        # resolves variables (using env vars defined above or system defaults),
+        # and checks references to context/files (like secret files).
+        # It does NOT require Docker Swarm mode.
+        # Outputting to /dev/null focuses on success/failure via exit code.
+        run: docker compose -f docker-stack.yml config > /dev/null
+
+  validate-stack-deploy:
+    # This job provides a more thorough check by simulating a deployment.
+    # It REQUIRES initializing Swarm on the runner and handling Docker Secrets correctly.
+    name: Validate Docker Stack Deploy (Dry Run)
+    needs: validate-config # Ensure basic config is valid first
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # We still need the *files* if entrypoints within containers expect them at /run/secrets/*_FILE
+      # However, for `docker stack deploy` itself, it primarily cares about Swarm secrets existing.
+      - name: Create Dummy Secret Files (redundant if files aren't read directly by entrypoints, but safe)
+        run: |
+          mkdir -p ./secrets
+          echo "dummy_ci_root_password" > ./secrets/mysql_root_password.txt
+          echo "dummy_ci_user_password" > ./secrets/mysql_password.txt
+        shell: bash
 
-      - name: Log in to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Create Dummy Nginx Config (needed for mount validation)
+        run: |
+           mkdir -p ./nginx
+           echo "server { listen 80; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$args; } location ~ \.php$ { try_files \$uri =404; fastcgi_pass wordpress_fpm:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } }" > ./nginx.conf
+        shell: bash
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+      - name: Initialize Docker Swarm
+        # Required for `docker stack deploy` command
+        run: docker swarm init
 
-      - name: Docker Compose Up for Integration Testing
-        uses: isbang/compose-action@v2.2.1
-        with:
-          compose-file: docker-compose.yml
-          up-flags: '--build -d'
+      - name: Create Dummy Docker Swarm Secrets
+        # `docker stack deploy` checks if the secrets defined in the compose file's `secrets:`
+        # block (e.g., `mysql_root_password:`) actually exist as Swarm secrets.
+        # We create dummy secrets in the runner's temporary Swarm environment.
+        run: |
+          echo "dummy_ci_root_password" | docker secret create mysql_root_password -
+          echo "dummy_ci_user_password" | docker secret create mysql_password -
+          # Add docker secret create commands for any other secrets defined in your stack file
+        shell: bash
+
+      - name: Validate Stack Deployment (Dry Run)
+        # Attempts a dry run of the deployment against the local Swarm node.
+        # --with-registry-auth is usually for private images, safe to keep.
+        # --prune removes services not in the stack file (relevant for actual deploy).
+        # --dry-run prevents actual deployment.
+        run: docker stack deploy --compose-file docker-stack.yml ci_test_stack --with-registry-auth --prune --dry-run
