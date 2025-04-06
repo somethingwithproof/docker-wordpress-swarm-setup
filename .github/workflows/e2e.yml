@@ -1,10 +1,13 @@
-# .github/workflows/e2e-tests.yml # Renamed for clarity
+# .github/workflows/e2e-tests.yml
 name: End-to-End Tests
 
 on:
   push:
     branches:
-      - main # Consider running on PRs too, or only specific triggers
+      - main # Run on pushes to main
+  pull_request:
+    branches:
+      - main # Also run on PRs targeting main
 
 jobs:
   e2e_tests:
@@ -20,17 +23,13 @@ jobs:
       # as the target docker-stack.yml uses pre-built public images.
       # Add them back ONLY if your stack requires custom-built images.
 
-      - name: Create Dummy Secret Files
-        # Needed for potential file mounts or entrypoint scripts, and config validation
-        run: |
-          mkdir -p ./secrets
-          echo "dummy_e2e_root_password" > ./secrets/mysql_root_password.txt
-          echo "dummy_e2e_user_password" > ./secrets/mysql_password.txt
-          # Add other secret files if needed (e.g., redis_password.txt)
-        shell: bash
+      # Note: Removed 'Create Dummy Secret Files' step.
+      # Assumes the docker-stack.yml uses Docker Swarm secrets created below,
+      # and does NOT mount local files from a './secrets' directory.
+      # If local secret files ARE needed for mounts or pre-deploy scripts, add that step back.
 
       - name: Create Dummy Nginx Config
-        # Needed because the nginx service mounts this file
+        # Needed because the nginx service likely mounts this file (adjust if using Docker Configs)
         run: |
           mkdir -p ./nginx # Ensure directory exists if referenced
           # Basic Nginx config proxying to FPM service named 'wordpress_fpm'
@@ -46,7 +45,7 @@ jobs:
         run: |
           echo "dummy_e2e_root_password" | docker secret create mysql_root_password -
           echo "dummy_e2e_user_password" | docker secret create mysql_password -
-          # Add 'docker secret create' for other secrets if used
+          # Add 'docker secret create' for other secrets defined in your stack file
         shell: bash
 
       # --- Deployment Phase ---
@@ -56,27 +55,38 @@ jobs:
         # Use the actual stack file name here.
         run: docker stack deploy -c docker-stack.yml e2e_wp_stack
 
-      - name: Wait for WordPress Service to be Ready
-        # Poll the main WordPress endpoint (served by Traefik on port 80)
+      - name: Wait for Application Service to be Ready
+        # Poll the main application endpoint (e.g., WordPress via Traefik/Nginx on port 80)
         # Increase timeout if needed (e.g., 180s)
         # Use '--fail' to exit loop on success, '--silent --output /dev/null' to hide output
         run: |
-          echo "Waiting for WordPress service via Traefik on http://localhost ..."
+          echo "Waiting for application service via ingress on http://localhost ..."
           timeout 120s bash -c 'until curl --fail --silent --output /dev/null http://localhost; do echo "Still waiting..."; sleep 5; done'
-          echo "WordPress service appears ready!"
+          echo "Application service appears ready!"
         shell: bash
 
       # --- Testing Phase ---
-      # Add more specific E2E tests here using curl, testing frameworks (Cypress, Playwright), etc.
+      # TODO: Implement more robust E2E tests using frameworks like Cypress, Playwright,
+      # or more detailed script-based checks (e.g., checking login, specific content).
 
-      - name: Run Basic WordPress Reachability Test
-        # Check if the main page loads via Traefik on port 80 and returns HTTP 200 OK
+      - name: Run Basic Application Reachability Test
+        # Check if the main page loads via ingress (e.g., Traefik/Nginx) on port 80 and returns HTTP 200 OK
         # --show-error provides more info on failure, --verbose shows request/response details
         run: curl --fail --show-error --verbose http://localhost
 
-      # Example: Check if Traefik dashboard is reachable (if exposed on 8080 in your stack)
-      # - name: Run Basic Traefik Dashboard Reachability Test
-      #   run: curl --fail --show-error http://localhost:8080/dashboard/
+      # --- Debugging on Failure ---
+
+      - name: Show Docker Logs on Failure
+        # If any step fails, dump the logs from key services for easier debugging
+        if: failure()
+        run: |
+          echo "--- Docker Service Logs (Attempting on Failure) ---"
+          # !!! IMPORTANT: Adjust the service names below to match your docker-stack.yml !!!
+          docker service logs e2e_wp_stack_wordpress_fpm || echo "Failed to get wordpress_fpm logs (or service name is different)"
+          docker service logs e2e_wp_stack_nginx || echo "Failed to get nginx logs (or service name is different)"
+          docker service logs e2e_wp_stack_mysql || echo "Failed to get mysql logs (or service name is different)"
+          # Add logs for other relevant services (e.g., redis, traefik)
+        shell: bash
 
       # --- Cleanup Phase ---
 
@@ -85,7 +95,12 @@ jobs:
         if: always()
         run: docker stack rm e2e_wp_stack
 
-      # Optional: Leave Swarm mode if necessary, though runner is ephemeral
+      - name: Prune Docker System Resources
+        # Remove stopped containers, networks, build cache, and importantly VOLUMES
+        if: always()
+        run: docker system prune -af --volumes
+
+      # Optional: Leave Swarm mode (usually not needed for ephemeral runners)
       # - name: Leave Docker Swarm
       #   if: always()
       #   run: docker swarm leave --force
