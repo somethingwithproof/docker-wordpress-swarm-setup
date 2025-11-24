@@ -7,17 +7,29 @@ on:
   pull_request:
     branches: [ main ]
 
+# Cancel previous runs on the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
 # Define default environment variables for interpolation during validation.
 # Adjust values and add others expected by your docker-stack.yml.
 env:
   YOUR_REAL_EMAIL: ci-validation@example.com # Dummy value for Traefik ACME email
   YOUR_DOMAIN: ci-validation.example.com   # Dummy value for Traefik domain rules
 
+
+# Minimal permissions by default
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Basic Compose file validation (syntax, interpolation, basic path checks)
   validate-compose-config:
     name: Validate Docker Compose Syntax & Interpolation
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent hung jobs
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -53,6 +65,7 @@ jobs:
     name: Validate Docker Stack Deploy (Dry Run)
     needs: validate-compose-config # Run only if basic config is valid
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent hung jobs
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
