@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Create dummy files referenced in the stack file (needed for `docker compose config`)
       # These steps might be repeated in the next job; kept here specifically for this validation scope.
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Re-create dummy files if they are explicitly mounted or needed by entrypoints
       # Redundant if only Swarm secrets/configs are used internally by services,
