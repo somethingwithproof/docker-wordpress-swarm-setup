@@ -4,6 +4,10 @@
 
 A Docker Swarm cluster deployment for running WordPress using DNS name-based discovery.
 
+## Architecture
+
+![Architecture Diagram](architecture.png)
+
 ## Features
 
 - Five services running in a Docker Swarm cluster:
