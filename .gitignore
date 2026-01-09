@@ -5,3 +5,46 @@ composer.phar
 # Commit your application's lock file http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file
 # You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file
 # composer.lock
+
+# =============================================================================
+# SECURITY: Never commit secrets to version control
+# =============================================================================
+# The secrets directory contains placeholder files for reference.
+# After running setup-secrets.sh, real passwords will be generated.
+# These MUST NOT be committed to version control.
+
+# Ignore all secret files except the placeholders
+secrets/*.txt
+!secrets/.gitkeep
+
+# Common secret/credential patterns (defense in depth)
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+credentials.json
+service-account*.json
+
+# Let's Encrypt certificates (generated at runtime)
+letsencrypt/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker volumes (if mounted locally for development)
+data/
+mysql-data/
+redis-data/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
