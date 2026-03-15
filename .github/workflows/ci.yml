@@ -40,7 +40,7 @@ jobs:
 
       # Buildx setup is optional for 'config' but good practice if build contexts are validated
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Validate Compose File with Interpolation
         # Checks syntax, resolves ENV variables, merges files (if applicable),
