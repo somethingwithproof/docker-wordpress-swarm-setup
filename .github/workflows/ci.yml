@@ -17,7 +17,7 @@ jobs:
   # Job 1: Basic Compose file validation (syntax, interpolation, basic path checks)
   validate-compose-config:
     name: Validate Docker Compose Syntax & Interpolation
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, linux, x64]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
   validate-stack-deploy-dry-run:
     name: Validate Docker Stack Deploy (Dry Run)
     needs: validate-compose-config # Run only if basic config is valid
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, linux, x64]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
