@@ -21,20 +21,26 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+readonly DIVIDER='=============================================='
+
 log_info() {
-  echo -e "${BLUE}[INFO]${NC} $1"
+  local message="$1"
+  echo -e "${BLUE}[INFO]${NC} ${message}"
 }
 
 log_success() {
-  echo -e "${GREEN}[SUCCESS]${NC} $1"
+  local message="$1"
+  echo -e "${GREEN}[SUCCESS]${NC} ${message}"
 }
 
 log_warn() {
-  echo -e "${YELLOW}[WARN]${NC} $1"
+  local message="$1"
+  echo -e "${YELLOW}[WARN]${NC} ${message}"
 }
 
 log_error() {
-  echo -e "${RED}[ERROR]${NC} $1"
+  local message="$1"
+  echo -e "${RED}[ERROR]${NC} ${message}" >&2
 }
 
 # Generate a cryptographically secure password
@@ -80,7 +86,7 @@ check_existing_secrets() {
 
   for secret in mysql_root_password mysql_password redis_password traefik_dashboard_auth; do
     local file="${SECRETS_DIR}/${secret}.txt"
-    if [ -f "$file" ]; then
+    if [[ -f "$file" ]]; then
       # Check if it's a placeholder
       if grep -q "REPLACE_WITH" "$file" 2>/dev/null; then
         continue
@@ -89,7 +95,7 @@ check_existing_secrets() {
     fi
   done
 
-  if [ ${#existing[@]} -gt 0 ] && [ "$force" != "true" ]; then
+  if [[ ${#existing[@]} -gt 0 ]] && [[ "$force" != "true" ]]; then
     log_warn "The following secrets already exist: ${existing[*]}"
     log_warn "Use --force to regenerate all secrets (this will overwrite existing values)"
     return 1
@@ -100,7 +106,7 @@ check_existing_secrets() {
 
 # Create secrets directory
 create_secrets_dir() {
-  if [ ! -d "$SECRETS_DIR" ]; then
+  if [[ ! -d "$SECRETS_DIR" ]]; then
     log_info "Creating secrets directory: $SECRETS_DIR"
     mkdir -p "$SECRETS_DIR"
     chmod 700 "$SECRETS_DIR"
@@ -144,7 +150,7 @@ generate_secrets() {
   read -rsp "Enter Traefik dashboard password (leave empty to generate): " traefik_pass
   echo
 
-  if [ -z "$traefik_pass" ]; then
+  if [[ -z "$traefik_pass" ]]; then
     traefik_pass=$(generate_password 24)
     log_info "Generated Traefik password: $traefik_pass"
     log_warn "Save this password - it won't be shown again!"
@@ -189,9 +195,9 @@ create_docker_secrets() {
 # Print summary
 print_summary() {
   echo
-  echo "=============================================="
+  echo "$DIVIDER"
   echo -e "${GREEN}  Secrets Setup Complete!${NC}"
-  echo "=============================================="
+  echo "$DIVIDER"
   echo
   echo "Secret files created in: $SECRETS_DIR/"
   echo
@@ -212,14 +218,14 @@ print_summary() {
 main() {
   local force=false
 
-  if [ "${1:-}" = "--force" ]; then
+  if [[ "${1:-}" = "--force" ]]; then
     force=true
     log_warn "Force mode enabled. All secrets will be regenerated."
   fi
 
-  echo "=============================================="
+  echo "$DIVIDER"
   echo "  WordPress Swarm Secrets Setup"
-  echo "=============================================="
+  echo "$DIVIDER"
   echo
 
   # Check for existing secrets

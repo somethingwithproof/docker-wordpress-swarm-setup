@@ -28,20 +28,26 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+readonly DIVIDER='=============================================='
+
 log_info() {
-  echo -e "${BLUE}[INFO]${NC} $1"
+  local message="$1"
+  echo -e "${BLUE}[INFO]${NC} ${message}"
 }
 
 log_success() {
-  echo -e "${GREEN}[SUCCESS]${NC} $1"
+  local message="$1"
+  echo -e "${GREEN}[SUCCESS]${NC} ${message}"
 }
 
 log_warn() {
-  echo -e "${YELLOW}[WARN]${NC} $1"
+  local message="$1"
+  echo -e "${YELLOW}[WARN]${NC} ${message}"
 }
 
 log_error() {
-  echo -e "${RED}[ERROR]${NC} $1"
+  local message="$1"
+  echo -e "${RED}[ERROR]${NC} ${message}" >&2
 }
 
 # Check if Docker Swarm is initialized
@@ -65,7 +71,7 @@ check_secrets() {
     fi
   done
 
-  if [ ${#missing_secrets[@]} -gt 0 ]; then
+  if [[ ${#missing_secrets[@]} -gt 0 ]]; then
     log_error "Missing Docker secrets: ${missing_secrets[*]}"
     log_info "Create secrets from files in ./secrets/ directory:"
     for secret in "${missing_secrets[@]}"; do
@@ -83,19 +89,19 @@ check_existing_cluster() {
   local running_replicas
   running_replicas=$(docker service ls --filter "name=${STACK_NAME}_${DB_SERVICE}" --format '{{.Replicas}}' 2>/dev/null | cut -d'/' -f1 || echo "0")
 
-  if [ "$running_replicas" -gt 0 ]; then
+  if [[ "$running_replicas" -gt 0 ]]; then
     log_info "Found $running_replicas running database replicas"
 
     # Check cluster health
     local container_id
     container_id=$(docker ps -q --filter "name=${STACK_NAME}_${DB_SERVICE}" | head -1)
 
-    if [ -n "$container_id" ]; then
+    if [[ -n "$container_id" ]]; then
       local cluster_size
       cluster_size=$(docker exec "$container_id" mysql -u root -p"$(cat /run/secrets/mysql_root_password 2>/dev/null || echo '')" \
         -e "SHOW STATUS LIKE 'wsrep_cluster_size';" 2>/dev/null | grep -oP '\d+$' || echo "0")
 
-      if [ "$cluster_size" -gt 0 ]; then
+      if [[ "$cluster_size" -gt 0 ]]; then
         log_success "Galera cluster is healthy with $cluster_size nodes"
         return 0
       fi
@@ -135,16 +141,14 @@ start_bootstrap_node() {
   log_info "Waiting for bootstrap node to be healthy..."
 
   local elapsed=0
-  while [ "$elapsed" -lt "$BOOTSTRAP_TIMEOUT" ]; do
+  while [[ "$elapsed" -lt "$BOOTSTRAP_TIMEOUT" ]]; do
     local container_id
     container_id=$(docker ps -q --filter "name=${STACK_NAME}_${DB_SERVICE}" | head -1)
 
-    if [ -n "$container_id" ]; then
-      # Check if MariaDB is accepting connections
-      if docker exec "$container_id" mysqladmin ping -h localhost --silent 2>/dev/null; then
-        log_success "Bootstrap node is ready!"
-        return 0
-      fi
+    # Check if MariaDB is accepting connections
+    if [[ -n "$container_id" ]] && docker exec "$container_id" mysqladmin ping -h localhost --silent 2>/dev/null; then
+      log_success "Bootstrap node is ready!"
+      return 0
     fi
 
     sleep "$HEALTH_CHECK_INTERVAL"
@@ -172,16 +176,16 @@ scale_cluster() {
   local elapsed=0
   local scale_timeout=$((BOOTSTRAP_TIMEOUT * 2))
 
-  while [ $elapsed -lt $scale_timeout ]; do
+  while [[ $elapsed -lt $scale_timeout ]]; do
     local container_id
     container_id=$(docker ps -q --filter "name=${STACK_NAME}_${DB_SERVICE}" | head -1)
 
-    if [ -n "$container_id" ]; then
+    if [[ -n "$container_id" ]]; then
       local cluster_size
       cluster_size=$(docker exec "$container_id" mysql -u root -p"$(docker exec "$container_id" cat /run/secrets/mysql_root_password 2>/dev/null)" \
         -e "SHOW STATUS LIKE 'wsrep_cluster_size';" 2>/dev/null | grep -oP '\d+$' || echo "0")
 
-      if [ "$cluster_size" -ge "$replicas" ]; then
+      if [[ "$cluster_size" -ge "$replicas" ]]; then
         log_success "Galera cluster scaled to $cluster_size nodes!"
         return 0
       fi
@@ -206,14 +210,14 @@ cleanup() {
 main() {
   local force_bootstrap=false
 
-  if [ "${1:-}" = "--force" ]; then
+  if [[ "${1:-}" = "--force" ]]; then
     force_bootstrap=true
     log_warn "Force bootstrap requested. This will reinitialize the cluster!"
   fi
 
-  echo "=============================================="
+  echo "$DIVIDER"
   echo "  Galera Cluster Bootstrap Script"
-  echo "=============================================="
+  echo "$DIVIDER"
   echo
 
   # Pre-flight checks
@@ -243,9 +247,9 @@ main() {
   fi
 
   echo
-  echo "=============================================="
+  echo "$DIVIDER"
   log_success "Galera cluster bootstrap complete!"
-  echo "=============================================="
+  echo "$DIVIDER"
   echo
   echo "Useful commands:"
   echo "  Check cluster status: docker exec \$(docker ps -q -f name=${STACK_NAME}_${DB_SERVICE} | head -1) mysql -u root -p -e \"SHOW STATUS LIKE 'wsrep_%';\""
